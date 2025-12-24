@@ -6,18 +6,12 @@ from urllib.parse import urljoin, urlparse
 from datetime import datetime
 import feedparser
 from bs4 import BeautifulSoup
-try:
-    import snscrape.modules.twitter as sntwitter
-    import snscrape.modules.instagram as sninstagram
-    import snscrape.modules.facebook as snfacebook
-    import snscrape.modules.reddit as snreddit
-    SNSCRAPE_AVAILABLE = True
-except ImportError:
-    SNSCRAPE_AVAILABLE = False
-    sntwitter = None
-    sninstagram = None
-    snfacebook = None
-    snreddit = None
+# snscrape has been completely removed from the project
+SNSCRAPE_AVAILABLE = False  # Always False since snscrape is no longer part of the project
+sntwitter = None
+sninstagram = None
+snfacebook = None
+snreddit = None
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -263,24 +257,24 @@ class EthicalScraper:
             self._teardown_selenium_driver()
     
     def scrape_twitter_profile(self, username: str) -> Optional[Dict]:
-        """Scrape public Twitter/X profile information using snscrape"""
-        if not SNSCRAPE_AVAILABLE:
-            print("snscrape not available, cannot scrape Twitter profile")
-            return None
-        
+        """Scrape public Twitter/X profile information using alternative methods"""
+        # snscrape has been removed, using alternative approach
         try:
-            # Use snscrape to get user information
-            user = None
-            for i, user in enumerate(sntwitter.TwitterUserScraper(username).get_items()):
-                if i == 0:  # First item contains user info
-                    break
+            # Using Selenium to scrape Twitter profile
+            url = f'https://twitter.com/{username}'
+            page_source = self.scrape_with_selenium(url, wait_selector='[data-testid="primaryColumn"]', use_proxy=True)
             
-            if user:
+            if page_source:
+                soup = BeautifulSoup(page_source, 'html.parser')
+                # Extract profile information using BeautifulSoup
+                name_element = soup.find('h2', {'data-testid': 'primaryColumn'})
+                bio_element = soup.find('div', {'data-testid': 'UserDescription'})
+                
                 return {
-                    'nome_usuario': user.username,
-                    'nome_completo': user.rawContent[:200] if user.rawContent else '',
-                    'biografia': user.user.description if hasattr(user, 'user') and user.user else '',
-                    'url_perfil': f'https://twitter.com/{username}',
+                    'nome_usuario': username,
+                    'nome_completo': name_element.get_text().strip() if name_element else username,
+                    'biografia': bio_element.get_text().strip() if bio_element else '',
+                    'url_perfil': url,
                     'plataforma': 'twitter'
                 }
         except Exception as e:
@@ -289,27 +283,33 @@ class EthicalScraper:
         return None
     
     def scrape_twitter_posts(self, username: str, limit: int = 10) -> List[Dict]:
-        """Scrape public Twitter/X posts using snscrape"""
-        if not SNSCRAPE_AVAILABLE:
-            print("snscrape not available, cannot scrape Twitter posts")
-            return []
-        
+        """Scrape public Twitter/X posts using alternative methods"""
+        # snscrape has been removed, using alternative approach
         posts = []
         try:
-            for i, tweet in enumerate(sntwitter.TwitterSearchScraper(f'from:{username}').get_items()):
-                if i >= limit:
-                    break
+            # Using Selenium to scrape Twitter posts
+            url = f'https://twitter.com/{username}'
+            page_source = self.scrape_with_selenium(url, wait_selector='[data-testid="tweet"]', use_proxy=True)
+            
+            if page_source:
+                soup = BeautifulSoup(page_source, 'html.parser')
+                tweet_elements = soup.find_all('article', {'data-testid': 'tweet'})
                 
-                posts.append({
-                    'post_id': str(tweet.id),
-                    'conteudo': tweet.rawContent,
-                    'data_postagem': tweet.date,
-                    'curtidas': tweet.likeCount or 0,
-                    'comentarios': tweet.replyCount or 0,
-                    'compartilhamentos': tweet.retweetCount or 0,
-                    'url_postagem': tweet.url,
-                    'marcadores': ' '.join([tag for tag in tweet.hashtags]) if tweet.hashtags else '',
-                })
+                for i, tweet_element in enumerate(tweet_elements[:limit]):
+                    # Extract tweet content
+                    content_element = tweet_element.find('div', {'data-testid': 'tweetText'})
+                    content = content_element.get_text().strip() if content_element else ''
+                    
+                    posts.append({
+                        'post_id': f'tweet_{i}',
+                        'conteudo': content,
+                        'data_postagem': datetime.now(),  # Selenium can't get exact time without more complex parsing
+                        'curtidas': 0,  # Would need more complex parsing to extract
+                        'comentarios': 0,
+                        'compartilhamentos': 0,
+                        'url_postagem': url,
+                        'marcadores': '',
+                    })
         except Exception as e:
             print(f"Error scraping Twitter posts for {username}: {str(e)}")
         
@@ -317,22 +317,28 @@ class EthicalScraper:
     
     def scrape_instagram_profile(self, username: str) -> Optional[Dict]:
         """Scrape public Instagram profile information"""
-        # Note: Instagram scraping is more restricted, using snscrape
-        if not SNSCRAPE_AVAILABLE:
-            print("snscrape not available, cannot scrape Instagram profile")
-            return None
-        
+        # snscrape has been removed, using alternative approach
         try:
-            profile = sninstagram.InstagramUserScraper(username).get_items()
-            for item in profile:
-                # Get profile info from first item
-                return {
-                    'nome_usuario': item.username if hasattr(item, 'username') else username,
-                    'nome_completo': getattr(item, 'fullName', '')[:200],
-                    'biografia': getattr(item, 'biography', ''),
-                    'url_perfil': f'https://instagram.com/{username}',
-                    'plataforma': 'instagram'
-                }
+            # Using Selenium to scrape Instagram profile
+            url = f'https://instagram.com/{username}'
+            page_source = self.scrape_with_selenium(url, wait_selector='header', use_proxy=True)
+            
+            if page_source:
+                soup = BeautifulSoup(page_source, 'html.parser')
+                header_element = soup.find('header')
+                
+                if header_element:
+                    # Extract profile information
+                    full_name_element = header_element.find('h2', {'class': '_7UhW9'})
+                    bio_element = header_element.find('div', {'class': '-vDIg'})
+                    
+                    return {
+                        'nome_usuario': username,
+                        'nome_completo': full_name_element.get_text().strip() if full_name_element else username,
+                        'biografia': bio_element.get_text().strip() if bio_element else '',
+                        'url_perfil': url,
+                        'plataforma': 'instagram'
+                    }
         except Exception as e:
             print(f"Error scraping Instagram profile {username}: {str(e)}")
         
@@ -342,21 +348,29 @@ class EthicalScraper:
         """Scrape public Instagram posts"""
         posts = []
         try:
-            # Using the correct snscrape approach for Instagram user posts
-            for i, post in enumerate(sninstagram.InstagramUserScraper(username).get_items()):
-                if i >= limit:
-                    break
+            # Using Selenium to scrape Instagram posts
+            url = f'https://instagram.com/{username}'
+            page_source = self.scrape_with_selenium(url, wait_selector='article', use_proxy=True)
+            
+            if page_source:
+                soup = BeautifulSoup(page_source, 'html.parser')
+                post_elements = soup.find_all('article')
                 
-                posts.append({
-                    'post_id': str(post.id) if hasattr(post, 'id') else str(i),
-                    'conteudo': getattr(post, 'caption', ''),
-                    'data_postagem': getattr(post, 'date', datetime.now()),
-                    'curtidas': getattr(post, 'likes', 0),
-                    'comentarios': getattr(post, 'comments', 0),
-                    'compartilhamentos': getattr(post, 'video_view_count', 0) if hasattr(post, 'video_view_count') else 0,
-                    'url_postagem': getattr(post, 'url', ''),
-                    'marcadores': '',
-                })
+                for i, post_element in enumerate(post_elements[:limit]):
+                    # Extract post information
+                    caption_element = post_element.find('div', {'class': 'C4VMK'})
+                    caption = caption_element.get_text().strip() if caption_element else ''
+                    
+                    posts.append({
+                        'post_id': f'insta_post_{i}',
+                        'conteudo': caption,
+                        'data_postagem': datetime.now(),
+                        'curtidas': 0,  # Would need more complex parsing
+                        'comentarios': 0,
+                        'compartilhamentos': 0,
+                        'url_postagem': url,
+                        'marcadores': '',
+                    })
         except Exception as e:
             print(f"Error scraping Instagram posts for {username}: {str(e)}")
         
@@ -364,28 +378,34 @@ class EthicalScraper:
     
     def scrape_facebook_public_posts(self, page_name: str, limit: int = 10) -> List[Dict]:
         """Scrape public Facebook posts (requires careful implementation)"""
-        if not SNSCRAPE_AVAILABLE:
-            print("snscrape not available, cannot scrape Facebook posts")
-            return []
-            
         posts = []
-        # Facebook is very restrictive, using snscrape as an alternative
+        # Facebook is very restrictive, using generic scraping as an alternative
         # This is a placeholder for more complex implementation
         try:
-            for i, post in enumerate(snfacebook.FacebookPageScraper(page_name).get_items()):
-                if i >= limit:
-                    break
+            # Using Selenium to scrape Facebook page
+            url = f'https://facebook.com/{page_name}'
+            page_source = self.scrape_with_selenium(url, wait_selector='[data-pagelet="Feed"]', use_proxy=True)
+            
+            if page_source:
+                soup = BeautifulSoup(page_source, 'html.parser')
+                # Find Facebook post elements (this is a simplified approach)
+                post_elements = soup.find_all('div', {'data-testid': 'fbfeed_story'})
+                
+                for i, post_element in enumerate(post_elements[:limit]):
+                    # Extract post content
+                    content_element = post_element.find('div', {'data-testid': 'post_message'})
+                    content = content_element.get_text().strip() if content_element else ''
                     
-                posts.append({
-                    'post_id': str(post.id) if hasattr(post, 'id') else str(i),
-                    'conteudo': getattr(post, 'text', ''),
-                    'data_postagem': getattr(post, 'datetime', datetime.now()),
-                    'curtidas': getattr(post, 'likes', 0),
-                    'comentarios': getattr(post, 'comments', 0),
-                    'compartilhamentos': getattr(post, 'shares', 0),
-                    'url_postagem': getattr(post, 'url', ''),
-                    'marcadores': '',
-                })
+                    posts.append({
+                        'post_id': f'fb_post_{i}',
+                        'conteudo': content,
+                        'data_postagem': datetime.now(),
+                        'curtidas': 0,  # Would need more complex parsing
+                        'comentarios': 0,
+                        'compartilhamentos': 0,
+                        'url_postagem': url,
+                        'marcadores': '',
+                    })
         except Exception as e:
             print(f"Error scraping Facebook posts for {page_name}: {str(e)}")
             
