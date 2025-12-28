@@ -19,7 +19,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from fake_useragent import UserAgent
-import undetected_chromedriver as uc
+import zendriver as zd
 
 from django.conf import settings
 from .models import PerfilRedeSocial, Postagem
@@ -126,14 +126,35 @@ class EthicalScraper:
         # Set a realistic user agent
         chrome_options.add_argument(f'--user-agent={self.ua.random}')
         
-        # Create undetected Chrome driver
+        # Create undetected Chrome driver with zendriver
         try:
-            self.webdriver = uc.Chrome(options=chrome_options)
+            # zendriver doesn't use Chrome options in the same way
+            # Instead, we pass arguments directly
+            args = []
+            if proxy:
+                proxy_server = proxy.get('http', '').replace('http://', '')
+                if proxy_server:
+                    args.append(f'--proxy-server=http://{proxy_server}')
+            
+            # Add other options as arguments
+            args.extend([
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+                f'--user-agent={self.ua.random}'
+            ])
+            
+            self.webdriver = zd.start(
+                headless=False,  # Set to True if you want headless mode
+                # Add the arguments
+                args=args
+            )
+            
             # Execute script to remove webdriver property
             self.webdriver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         except Exception as e:
             print(f"Error setting up Chrome driver: {str(e)}")
-            # Fallback to regular Chrome if undetected_chromedriver fails
+            # Fallback to regular Chrome if zendriver fails
             self.webdriver = webdriver.Chrome(options=chrome_options)
             self.webdriver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     

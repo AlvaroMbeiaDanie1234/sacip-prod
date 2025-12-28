@@ -25,4 +25,6 @@ beautifulsoup4==4.12.3
 
 fake-useragent==1.5.1
 requests[socks]==2.32.3
-undetected-chromedriver==3.5.5
+# undetected-chromedriver==3.5.5  # Removed due to Python 3.12+ distutils removal
+# Using zendriver as a modern replacement
+zendriver==4.2.3

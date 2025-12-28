@@ -132,19 +132,19 @@ def scan_media_directories():
                 if file_path.suffix.lower() in image_extensions:
                     face_data = extract_faces_from_image(str(file_path))
                     for face in face_data:
-                        # Create a unique identifier based on the file path
                         face['id'] = str(file_path)
                         face['source'] = 'Base de dados da POLICIA NACIONAL'
-                        # Generate the relative path for Django media URL
-                        # Calculate path relative to media directory
                         media_root = Path(settings.MEDIA_ROOT)
                         try:
                             relative_path = file_path.relative_to(media_root)
+                            relative_path_str = str(relative_path).replace('\\', '/')
                         except ValueError:
-                            # If file is not within media root, use original approach
                             relative_path = file_path.relative_to(Path(os.getcwd()))
-                        # Use the full media URL path for the frontend
-                        face['photo_url'] = f"/media/{relative_path}"
+                            relative_path_str = str(relative_path).replace('\\', '/')
+                        face['photo_url'] = f"/media/{relative_path_str}"
+                        
+                        # Debug: print the generated URL
+                        print(f"Generated photo URL: {face['photo_url']} for file: {file_path}")
                         all_face_data.append(face)
     
     print(f"🔍 Found {len(all_face_data)} faces in media directories")
