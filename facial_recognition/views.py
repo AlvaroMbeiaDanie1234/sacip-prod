@@ -4,6 +4,7 @@ import numpy as np
 import json
 import os
 from pathlib import Path
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -51,8 +52,8 @@ def load_suspects_database():
         # Get the first photo path if available
         photo_url = ""
         if photo_paths and isinstance(photo_paths, list) and len(photo_paths) > 0:
-            # Photos are stored in media directory with filenames like suspect_{id}.jpg
-            photo_url = f"https://backend-sacip.onrender.com/media/{photo_paths[0]}"
+            # Generate Django media URL for the photo
+            photo_url = f"/media/{photo_paths[0]}"
         
         if embeddings:
             # Assuming the first embedding for simplicity
@@ -108,14 +109,15 @@ def extract_faces_from_image(image_path):
 def scan_media_directories():
     """Scan media directories for images to use in facial recognition."""
     media_dirs = [
-        "media",  # Main media directory
-        "media/invasion_media"  # Invasion media directory
+        "",  # Main media directory (relative to MEDIA_ROOT)
+        "invasion_media",  # Invasion media directory
+        "suspicious_info_photos"  # Suspicious information photos directory
     ]
     
     all_face_data = []
     
     for media_dir in media_dirs:
-        abs_media_dir = Path(os.getcwd()) / media_dir
+        abs_media_dir = Path(settings.MEDIA_ROOT) / media_dir
         
         if not abs_media_dir.exists():
             print(f"⚠️ Media directory does not exist: {abs_media_dir}")
@@ -133,7 +135,16 @@ def scan_media_directories():
                         # Create a unique identifier based on the file path
                         face['id'] = str(file_path)
                         face['source'] = 'Base de dados da POLICIA NACIONAL'
-                        face['photo_url'] = f"https://backend-sacip.onrender.com/{file_path.relative_to(Path(os.getcwd()))}"
+                        # Generate the relative path for Django media URL
+                        # Calculate path relative to media directory
+                        media_root = Path(settings.MEDIA_ROOT)
+                        try:
+                            relative_path = file_path.relative_to(media_root)
+                        except ValueError:
+                            # If file is not within media root, use original approach
+                            relative_path = file_path.relative_to(Path(os.getcwd()))
+                        # Use the full media URL path for the frontend
+                        face['photo_url'] = f"/media/{relative_path}"
                         all_face_data.append(face)
     
     print(f"🔍 Found {len(all_face_data)} faces in media directories")
@@ -158,7 +169,7 @@ def recognize_suspects(embedding, suspects_db, threshold=THRESHOLD, media_face_d
                 "dangerous_level": suspect['dangerous_level'],
                 "dangerous_color": suspect['dangerous_color'],
                 "similarity": float(similarity),
-                "photo_url": suspect.get('photo_url', ''),
+                "photo_url": suspect.get('photo_url', ''),  # This should now contain proper media URLs
                 "source": "Base de dados Policial",
                 "suspect_obj": suspect['suspect_obj']
             })
@@ -178,7 +189,7 @@ def recognize_suspects(embedding, suspects_db, threshold=THRESHOLD, media_face_d
                     "dangerous_level": "N/A",
                     "dangerous_color": "#808080",
                     "similarity": float(similarity),
-                    "photo_url": face_data.get('photo_url', ''),
+                    "photo_url": face_data.get('photo_url', ''),  # This contains the media URL
                     "source": face_data.get('source', 'Base de dados da POLICIA NACIONAL'),
                     "suspect_obj": None  # No database object for media images
                 })
@@ -282,13 +293,17 @@ def process_frame(request):
                 
                 # Draw circle around face and label on frame
                 color = (0, 255, 0)  # Green
-                # Calculate center and radius for circle
+                # Calculate center and radius for circle based on bounding box
                 center_x = int((bbox[0] + bbox[2]) / 2)
                 center_y = int((bbox[1] + bbox[3]) / 2)
                 radius = int(max(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2)
                 cv2.circle(frame, (center_x, center_y), radius, color, 2)
+                
+                # Draw similarity text above the circle
                 cv2.putText(frame, f"{match['nickname']} ({match['similarity']:.2f})",
                            (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                
+                # Draw additional info below the circle
                 cv2.putText(frame, f"{match['full_name']} | {match['dangerous_level']}",
                            (bbox[0], bbox[3] + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
         
