@@ -7,9 +7,18 @@ from facial_recognition.models import Suspect
 
 
 class InformacaoSuspeitaListCreateView(generics.ListCreateAPIView):
-    queryset = InformacaoSuspeita.objects.all()
     serializer_class = InformacaoSuspeitaSerializer
     permission_classes = [permissions.IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = InformacaoSuspeita.objects.all()
+        
+        # Filter by suspect ID if provided
+        suspect_id = self.request.query_params.get('suspect', None)
+        if suspect_id is not None:
+            queryset = queryset.filter(suspect_id=suspect_id)
+            
+        return queryset
 
     
     def create(self, request, *args, **kwargs):

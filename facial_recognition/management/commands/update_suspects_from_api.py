@@ -34,12 +34,9 @@ MEDIA_ROOT = Path(settings.MEDIA_ROOT) if hasattr(settings, 'MEDIA_ROOT') else P
 # Create media directory if it doesn't exist
 MEDIA_ROOT.mkdir(exist_ok=True, parents=True)
 
-# Initialize FaceAnalysis
-if INSIGHTFACE_AVAILABLE:
-    face_app = FaceAnalysis(name=MODEL_NAME, providers=['CPUExecutionProvider'], root=Path("models"))
-    face_app.prepare(ctx_id=0, det_size=(640, 640))
-else:
-    face_app = None
+# Initialize FaceAnalysis (deferred until needed)
+face_app = None
+face_app_initialized = False
 
 
 def download_image(url, save_path):
@@ -56,9 +53,29 @@ def download_image(url, save_path):
         return False
 
 
+def initialize_face_app():
+    """Initialize the face analysis app if not already initialized."""
+    global face_app, face_app_initialized
+    
+    if not INSIGHTFACE_AVAILABLE:
+        return False
+    
+    if not face_app_initialized:
+        face_app = FaceAnalysis(name=MODEL_NAME, providers=['CPUExecutionProvider'], root=Path("models"))
+        face_app.prepare(ctx_id=0, det_size=(640, 640))
+        face_app_initialized = True
+        print("✅ Face analysis model initialized")
+        
+    return face_app is not None
+
+
 def extract_face_embedding(image_path):
     """Extract face embedding from an image using InsightFace."""
     if not INSIGHTFACE_AVAILABLE:
+        return None
+        
+    # Initialize face app if not already done
+    if not initialize_face_app():
         return None
         
     try:

@@ -65,9 +65,9 @@ python manage.py seed_organizational_units
 
 ## Acesso às Interfaces
 
-- **Administração**: http://127.0.0.1:8000/admin/
-- **Documentação da API (Swagger)**: http://127.0.0.1:8000/swagger/
-- **Documentação da API (Redoc)**: http://127.0.0.1:8000/redoc/
+- **Administração**: https://backend-sacip.onrender.com/admin/
+- **Documentação da API (Swagger)**: https://backend-sacip.onrender.com/swagger/
+- **Documentação da API (Redoc)**: https://backend-sacip.onrender.com/redoc/
 
 ## Autenticação
 
@@ -86,13 +86,13 @@ Este projeto é destinado exclusivamente para uso pelas autoridades policiais e 
 
 
 Templates de invasão
-http://127.0.0.1:8000/api/invasao/
+https://backend-sacip.onrender.com/api/invasao/
 
-http://127.0.0.1:8000/api/invasao/football/
+https://backend-sacip.onrender.com/api/invasao/football/
 
-http://127.0.0.1:8000/api/invasao/adult/
+https://backend-sacip.onrender.com/api/invasao/adult/
 
-http://127.0.0.1:8000/api/invasao/news/
+https://backend-sacip.onrender.com/api/invasao/news/
 
-http://127.0.0.1:8000/api/invasao/prizes/
+https://backend-sacip.onrender.com/api/invasao/prizes/
 

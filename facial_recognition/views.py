@@ -27,12 +27,25 @@ except ImportError:
 MODEL_NAME = 'buffalo_l'
 THRESHOLD = 0.0
 
-# Initialize FaceAnalysis
-if INSIGHTFACE_AVAILABLE:
-    face_app = FaceAnalysis(name=MODEL_NAME, providers=['CPUExecutionProvider'], root=Path("models"))
-    face_app.prepare(ctx_id=0, det_size=(640, 640))
-else:
-    face_app = None
+# Initialize FaceAnalysis (deferred until needed)
+face_app = None
+face_app_initialized = False
+
+
+def initialize_face_app():
+    """Initialize the face analysis app if not already initialized."""
+    global face_app, face_app_initialized
+    
+    if not INSIGHTFACE_AVAILABLE:
+        return False
+    
+    if not face_app_initialized:
+        face_app = FaceAnalysis(name=MODEL_NAME, providers=['CPUExecutionProvider'], root=Path("models"))
+        face_app.prepare(ctx_id=0, det_size=(640, 640))
+        face_app_initialized = True
+        print("✅ Face analysis model initialized")
+        
+    return face_app is not None
 
 
 def cosine_similarity(vec1, vec2):
@@ -74,6 +87,10 @@ def load_suspects_database():
 def extract_faces_from_image(image_path):
     """Extract face embeddings from an image file."""
     if not INSIGHTFACE_AVAILABLE:
+        return []
+    
+    # Initialize face app if not already done
+    if not initialize_face_app():
         return []
     
     try:
@@ -143,7 +160,6 @@ def scan_media_directories():
                             relative_path_str = str(relative_path).replace('\\', '/')
                         face['photo_url'] = f"/media/{relative_path_str}"
                         
-                        # Debug: print the generated URL
                         print(f"Generated photo URL: {face['photo_url']} for file: {file_path}")
                         all_face_data.append(face)
     
@@ -155,12 +171,10 @@ def recognize_suspects(embedding, suspects_db, threshold=THRESHOLD, media_face_d
     """Recognize suspects based on face embedding."""
     results = []
     
-    # Compare with database suspects
     for suspect in suspects_db:
         similarity = cosine_similarity(embedding, suspect['embedding'])
         print(f"🔍 Comparing with {suspect['nickname']}: similarity = {similarity:.2f}")
         
-        # Return all suspects that meet the similarity threshold
         if similarity > threshold and similarity >= min_similarity:
             results.append({
                 "id": suspect['id'],
@@ -174,7 +188,6 @@ def recognize_suspects(embedding, suspects_db, threshold=THRESHOLD, media_face_d
                 "suspect_obj": suspect['suspect_obj']
             })
     
-    # Compare with media directory faces if provided
     if media_face_data:
         for face_data in media_face_data:
             similarity = cosine_similarity(embedding, face_data['embedding'])
@@ -231,6 +244,10 @@ def process_frame(request):
         
         # Get minimum similarity threshold from request (default to 0.5 if not provided)
         min_similarity = float(data.get('min_similarity', 0.5))
+        
+        # Initialize face app if not already done
+        if not initialize_face_app():
+            return JsonResponse({'error': 'Facial recognition is not available'}, status=500)
         
         # Load suspects database
         suspects_db = load_suspects_database()

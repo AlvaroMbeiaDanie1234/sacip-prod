@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import User
+from facial_recognition.models import Suspect
 
 
 class AlvoInvestigacao(models.Model):
@@ -32,6 +33,13 @@ class AlvoInvestigacao(models.Model):
         blank=True,
         related_name='alvos_investigacao'
     )
+#    suspect = models.ForeignKey(
+#        Suspect,
+#        on_delete=models.SET_NULL,
+#        null=True,
+#        blank=True,
+#        related_name='alvos_investigacao'
+#    )
     observacoes = models.TextField(blank=True)
     
     class Meta:
